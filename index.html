@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101317">
+  <meta name="description" content="Entrenamiento personal de memoria y cálculo mental durante 90 días.">
+  <title>Foco — Entrenamiento cognitivo</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script defer src="assets/js/storage.js"></script>
+  <script defer src="assets/js/progression.js"></script>
+  <script defer src="assets/js/statistics.js"></script>
+  <script defer src="assets/js/memory.js"></script>
+  <script defer src="assets/js/arithmetic.js"></script>
+  <script defer src="assets/js/app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" data-nav="dashboard" aria-label="Foco, inicio">
+        <span class="brand-mark">f</span><span>foco<span class="brand-dot">.</span></span>
+      </a>
+      <div class="sidebar-label">ENTRENAMIENTO</div>
+      <nav class="main-nav" aria-label="Navegación principal">
+        <button class="nav-link active" data-nav="dashboard"><span class="nav-icon">◫</span> Resumen</button>
+        <button class="nav-link" data-nav="train"><span class="nav-icon">◎</span> Entrenar</button>
+        <button class="nav-link" data-nav="calendar"><span class="nav-icon">▦</span> Calendario</button>
+        <button class="nav-link" data-nav="stats"><span class="nav-icon">⌁</span> Estadísticas</button>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-note">
+        <span class="note-icon">✦</span>
+        <p>La constancia vence a la intensidad.</p>
+        <span>Un paso cada día.</span>
+      </div>
+      <button class="nav-link settings-link" data-nav="settings"><span class="nav-icon">⚙</span> Ajustes</button>
+      <div class="profile-mini"><span class="avatar">F</span><span><b>Mi entrenamiento</b><small>Plan de 90 días</small></span></div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="mobile-menu icon-button" id="mobile-menu" aria-label="Abrir menú">☰</button>
+        <div class="breadcrumb">Entrenamiento <span>/</span> <b id="page-title">Resumen</b></div>
+        <div class="topbar-right">
+          <span class="today-label" id="today-label"></span>
+          <button class="icon-button" id="theme-toggle" aria-label="Cambiar tema" title="Cambiar tema">◐</button>
+        </div>
+      </header>
+      <div id="app" class="page-content" tabindex="-1"></div>
+      <footer class="footer">FOCO <span>·</span> ENTRENAMIENTO COGNITIVO <span class="footer-right">Tus datos permanecen en este dispositivo</span></footer>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="modal-root"></div>
+</body>
+</html>
