@@ -22,7 +22,7 @@
   }
 
   function sequenceLength(level, index) {
-    return Math.min([4, 6, 8, 12, 20][level - 1] || 4, 2 + level + Math.floor(index / 4));
+    return Math.min(10, [4, 6, 8, 12, 20][level - 1] || 4, 2 + level + Math.floor(index / 4));
   }
 
   function create(level, index) {
@@ -87,11 +87,23 @@
     return value.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
   }
 
+  function isWordTask(task) {
+    return task.type === "words" || (task.type === "interference" && task.sequenceKind === "words");
+  }
+
   function parseResponse(task, response) {
-    if (task.type === "words") {
-      return response.split(/[,;\n]+/).map(normalizeWords).filter(Boolean);
+    if (isWordTask(task)) {
+      return String(response).split(/[\s,;.!?]+/).map(normalizeWords).filter(Boolean);
     }
-    return response.trim().split(/[\s,;]+/).filter(Boolean).map(function (item) {
+    if (Array.isArray(response)) {
+      return response.map(function (item) {
+        const value = String(item).trim();
+        if (!value) return null;
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : NaN;
+      });
+    }
+    return String(response).trim().split(/[\s,;]+/).filter(Boolean).map(function (item) {
       const parsed = Number(item);
       return Number.isFinite(parsed) ? parsed : NaN;
     });
@@ -101,40 +113,74 @@
     const actual = parseResponse(task, response);
     const expected = (task.type === "working" ? task.expected : task.sequence).slice();
     if (task.type === "numeric" && task.direction === "inversa") expected.reverse();
-    const wordMode = task.type === "words" || (task.type === "interference" && task.sequenceKind === "words");
+    const wordMode = isWordTask(task);
     const normalizedExpected = wordMode ? expected.map(normalizeWords) : expected;
-    const correctPositions = Math.min(actual.length, normalizedExpected.length);
     let recalled = 0;
     let positions = 0;
-    if (task.type === "words") {
-      recalled = new Set(actual.filter(function (value) { return normalizedExpected.indexOf(value) !== -1; })).size;
+    let errors = 0;
+    const mistakes = [];
+    const matched = new Set();
+    if (wordMode) {
+      actual.forEach(function (value, actualIndex) {
+        const expectedIndex = normalizedExpected.findIndex(function (expectedValue, index) {
+          return expectedValue === value && !matched.has(index);
+        });
+        if (expectedIndex >= 0) matched.add(expectedIndex);
+        else mistakes.push("Respuesta " + (actualIndex + 1) + ": «" + value + "» " +
+          (normalizedExpected.indexOf(value) >= 0 ? "está repetida." : "no era una de las palabras esperadas."));
+      });
+      recalled = matched.size;
       positions = recalled;
+      errors = mistakes.length;
     } else {
-      for (let i = 0; i < correctPositions; i += 1) {
-        if (actual[i] === normalizedExpected[i]) positions += 1;
-      }
-      const matched = new Set();
       actual.forEach(function (value) {
+        if (value === null || Number.isNaN(value)) return;
         const index = normalizedExpected.findIndex(function (expectedValue, expectedIndex) {
           return expectedValue === value && !matched.has(expectedIndex);
         });
-        if (index >= 0) {
-          matched.add(index);
-          recalled += 1;
+        if (index >= 0) matched.add(index);
+      });
+      recalled = matched.size;
+      normalizedExpected.forEach(function (expectedValue, index) {
+        const value = actual[index];
+        if (value === expectedValue) {
+          positions += 1;
+        } else if (value !== null && value !== undefined) {
+          errors += 1;
+          mistakes.push(Number.isNaN(value)
+            ? "Casilla " + (index + 1) + ": la respuesta no es un número válido; debía ser " + expectedValue + "."
+            : "Posición " + (index + 1) + ": escribiste " + value + "; debía ser " + expectedValue + ".");
         }
       });
+      for (let index = normalizedExpected.length; index < actual.length; index += 1) {
+        const value = actual[index];
+        if (value === null || value === undefined) continue;
+        errors += 1;
+        mistakes.push(Number.isNaN(value)
+          ? "Casilla " + (index + 1) + ": la respuesta no es un número válido y no había un número esperado en esa posición."
+          : "Casilla " + (index + 1) + ": escribiste " + value + ", pero no había un número esperado en esa posición.");
+      }
     }
+    const missingIndices = normalizedExpected.map(function (_, index) { return index; }).filter(function (index) {
+      return !matched.has(index);
+    });
     const accuracy = normalizedExpected.length
-      ? Math.round((task.type === "words" ? recalled : (recalled + positions) / 2) / normalizedExpected.length * 100)
+      ? Math.round((wordMode ? recalled : (recalled + positions) / 2) / normalizedExpected.length * 100)
       : 0;
     return {
       accuracy,
       recalled,
       total: normalizedExpected.length,
       omissions: Math.max(0, normalizedExpected.length - recalled),
-      errors: Math.max(0, actual.length - recalled),
-      expected: normalizedExpected,
-      correctPositions: positions
+      errors,
+      expected,
+      correctPositions: positions,
+      mistakes,
+      omissionDetails: missingIndices.map(function (index) {
+        return wordMode
+          ? expected[index]
+          : "Posición " + (index + 1) + ": faltó " + expected[index];
+      })
     };
   }
 

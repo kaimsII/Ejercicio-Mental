@@ -167,6 +167,9 @@ h3 { font-size: 14px; margin-bottom: 7px; }
 .exercise-form { display: flex; gap: 9px; align-items: center; }
 .exercise-form input, .field-input { flex: 1; min-width: 0; background: #111519; border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 11px 12px; }
 .exercise-form input::placeholder, .field-input::placeholder { color: #626d77; }
+.memory-number-form { align-items: stretch; flex-direction: column; }
+.number-answer-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 8px; max-width: 540px; width: 100%; margin: 0 auto 6px; }
+.number-answer-grid input { flex: initial; width: 100%; padding: 11px 3px; text-align: center; font-size: 18px; }
 .form-hint { color: var(--subtle); font-size: 10px; margin-top: 8px; }
 .feedback { padding: 12px 14px; border-radius: 7px; background: var(--accent-wash); color: var(--accent); font-size: 12px; margin-top: 14px; }
 .feedback.error { color: var(--red); background: rgba(251,129,137,.09); }
@@ -303,4 +306,5 @@ body.light-theme .calendar-day { background: var(--panel); }
   .report-grid { grid-template-columns: repeat(2, 1fr); }
   .footer-right { display: none; }
   .exercise-form { align-items: stretch; flex-direction: column; }
+  .number-answer-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }

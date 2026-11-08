@@ -403,8 +403,11 @@
     const session = data.activeSession;
     const task = session && session.task;
     if (!task || task.done) return;
-    const input = form.elements.answer;
-    const result = FocoMemory.evaluate(task, input.value);
+    const numberInputs = form.querySelectorAll(".number-answer-grid input");
+    const response = numberInputs.length
+      ? Array.from(numberInputs).map(function (input) { return input.value; })
+      : form.elements.answer.value;
+    const result = FocoMemory.evaluate(task, response);
     result.responseSeconds = Math.max(0, Math.round((Date.now() - (task.recallStartedAt || Date.now())) / 100) / 10);
     task.done = true;
     task.result = result;
@@ -507,12 +510,18 @@
     let body = '<div class="eyebrow">EJERCICIO ' + (session.completedExercises + 1) + ' · ' + esc(task.title) + '</div><h2>' + esc(task.title) + '</h2><p class="instructions">' + esc(task.instruction) + '</p>';
     if (task.done) {
       const result = task.result;
-      body += '<div class="feedback ' + (result.accuracy >= 70 ? "" : "error") + '">' + result.recalled + ' de ' + result.total + ' elementos recordados · ' + result.correctPositions + ' en posición correcta · ' + result.accuracy + '% de precisión. Omisiones: ' + result.omissions + ' · Errores: ' + result.errors + '.<br><span class="small">Secuencia esperada: ' + esc(result.expected.join(task.type === "words" ? " · " : " ")) + '</span></div><div class="session-actions"><span class="muted small">El resultado se guardó en esta sesión.</span><button class="button primary" data-action="next-memory">Siguiente ejercicio →</button></div>';
+      const details = [];
+      const mistakes = result.mistakes || [];
+      const omissionDetails = result.omissionDetails || [];
+      if (mistakes.length) details.push(mistakes.join(" "));
+      if (omissionDetails.length) details.push("Te faltó: " + omissionDetails.join(", ") + ".");
+      const wordMode = task.type === "words" || task.sequenceKind === "words";
+      body += '<div class="feedback ' + (result.errors || result.omissions || result.accuracy < 70 ? "error" : "") + '">' + result.recalled + ' de ' + result.total + ' elementos recordados · ' + result.correctPositions + ' en posición correcta · ' + result.accuracy + '% de precisión. Omisiones: ' + result.omissions + ' · Errores: ' + result.errors + '.' + (details.length ? '<br><span class="small">' + esc(details.join(" ")) + '</span>' : "") + '<br><span class="small">Secuencia esperada: ' + esc(result.expected.join(wordMode ? " · " : " ")) + '</span></div><div class="session-actions"><span class="muted small">El resultado se guardó en esta sesión.</span><button class="button primary" data-action="next-memory">Siguiente ejercicio →</button></div>';
     } else if (task.type === "interference" && task.phase === "distract") {
       const current = task.distractions[task.distractionIndex];
       body += '<div class="exercise-content"><div class="operation-display">' + current.a + ' + ' + current.b + '</div><p class="muted small">Distracción ' + (task.distractionIndex + 1) + ' de 3</p><form class="exercise-form" data-form="memory-distract"><input name="answer" inputmode="numeric" autocomplete="off" placeholder="Tu respuesta" required aria-label="Resultado de la suma"><button class="button primary">Responder</button></form></div>';
     } else if (task.phase === "study") {
-      body += '<div class="exercise-content"><div class="sequence-display ' + (task.type === "words" ? "stimulus-word" : "") + '">' + esc(task.stimulus) + '</div><div class="feedback neutral" id="study-hint">Observa con atención; el estímulo se ocultará automáticamente.</div></div>';
+      body += '<div class="exercise-content"><div class="sequence-display ' + (task.type === "words" || task.sequenceKind === "words" ? "stimulus-word" : "") + '">' + esc(task.stimulus) + '</div><div class="feedback neutral" id="study-hint">Observa con atención; el estímulo se ocultará automáticamente.</div></div>';
       window.clearTimeout(revealTimer);
       revealTimer = window.setTimeout(function () {
         if (data.activeSession && data.activeSession.task === task && task.phase === "study") {
@@ -524,8 +533,16 @@
       }, Math.max(0, task.studyDeadline - Date.now()));
     } else if (task.phase === "recall") {
       if (!task.recallStartedAt) task.recallStartedAt = Date.now();
-      const placeholder = task.type === "words" ? "Escribe las palabras separadas por coma" : "Separa los números con espacios o comas";
-      body += '<div class="exercise-content"><div class="sequence-display sequence-hidden">Estímulo oculto · escribe lo que recuerdes</div><form class="exercise-form" data-form="memory"><input name="answer" autocomplete="off" placeholder="' + placeholder + '" required aria-label="Tu recuerdo"><button class="button primary">Comprobar recuerdo</button></form><div class="form-hint">La información original permanece oculta durante la recuperación.</div></div>';
+      const wordMode = task.type === "words" || task.sequenceKind === "words";
+      body += '<div class="exercise-content"><div class="sequence-display sequence-hidden">Estímulo oculto · escribe lo que recuerdes</div>';
+      if (wordMode) {
+        body += '<form class="exercise-form" data-form="memory"><input name="answer" autocomplete="off" placeholder="Ej. río, comida, juego" aria-label="Palabras que recuerdas"><button class="button primary">Comprobar recuerdo</button></form><div class="form-hint">Separa las palabras con espacios o comas. Las tildes no son obligatorias.</div>';
+      } else {
+        body += '<form class="exercise-form memory-number-form" data-form="memory"><div class="number-answer-grid">' + Array.from({ length: 10 }, function (_, index) {
+          return '<input type="text" inputmode="numeric" maxlength="1" name="answer" autocomplete="off" aria-label="Número ' + (index + 1) + ' de 10">';
+        }).join("") + '</div><button class="button primary">Comprobar recuerdo</button></form><div class="form-hint">Usa las casillas en orden. Deja vacías las que no recuerdes.</div>';
+      }
+      body += '<div class="form-hint">La información original permanece oculta durante la recuperación.</div></div>';
     }
     return '<section class="panel exercise-panel">' + body + '</section>';
   }
