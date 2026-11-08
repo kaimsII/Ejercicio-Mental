@@ -12,7 +12,7 @@ El programa empieza el día en que se utiliza por primera vez. El contador diari
 
 ## Qué incluye
 
-- Entrenamientos independientes de memoria y cálculo con temporizadores de 20 minutos, pausa, reanudación, recuperación tras recargar y abandono. El bloque abandonado conserva los ejercicios terminados, pero no cuenta como sesión completada. El entrenamiento completo ejecuta memoria y luego cálculo, con 20 minutos por bloque.
+- Entrenamientos independientes de memoria y cálculo con temporizadores de 10 minutos, pausa, reanudación, recuperación tras recargar y abandono. El bloque abandonado conserva los ejercicios terminados, pero no cuenta como sesión completada. El entrenamiento completo ejecuta memoria y luego cálculo, con 10 minutos por bloque (20 minutos en total).
 - Cuatro ejercicios de memoria: secuencias numéricas directas/inversas, palabras, recuerdo tras interferencia y manipulación de memoria de trabajo. Los estímulos se ocultan automáticamente y las métricas incluyen aciertos, omisiones, errores, precisión y tiempo de recuperación.
 - Práctica aritmética guiada con descomposición distributiva, compensación, multiplicación por 11 estilo Trachtenberg, duplicación y división entre dos, descomposición del dividendo, factorización del divisor, división por 5 y múltiplos conocidos. También se puede elegir práctica mezclada.
 - Cada método tiene una pantalla previa con explicación paso a paso y ejemplo resuelto. El botón para iniciar la prueba se habilita tras confirmar que se leyó y entendió la explicación.

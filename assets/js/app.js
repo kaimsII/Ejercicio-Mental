@@ -1,7 +1,8 @@
 (function () {
   "use strict";
 
-  const SESSION_LENGTH = 20 * 60;
+  const SESSION_LENGTH = 10 * 60;
+  const PREVIOUS_SESSION_LENGTH = 20 * 60;
   const WEEKDAYS = ["L", "M", "X", "J", "V", "S", "D"];
   let data;
   let page = "dashboard";
@@ -150,9 +151,9 @@
       '<section class="panel progress-panel"><div class="panel-heading"><h2>Tu programa</h2><span class="muted">Día ' + currentDay() + ' de 90</span></div><div class="progress-visual">' + ring(percent) + '<div class="progress-copy"><strong>Construye el hábito, no la prisa.</strong><p>' + completedDays + ' de los 90 días tienen memoria y cálculo completados. Puedes recuperar cualquier día anterior desde el calendario.</p><div class="progress-bar"><span style="width:' + percent + '%"></span></div><p class="small" style="margin:9px 0 0">' + percent + '% del plan completado</p></div></div></section>' +
       '<section class="panel streak-panel"><div class="panel-heading"><h2>Esta semana</h2><span class="muted">Actividad</span></div><div class="streak-number">' + FocoStatistics.streak(data) + ' <span>↗</span></div><p>días de racha actual</p><div class="week-dots">' + week.map(function (day) { return '<div class="week-day ' + (day.done ? "done " : "") + (day.today ? "today" : "") + '"><i>' + (day.done ? "✓" : "·") + '</i><span>' + esc(day.label) + '</span></div>'; }).join("") + '</div></section></div>' +
       '<div class="dashboard-grid quick-grid section-spacer">' +
-      quickCard("memory", "◉", "Entrena memoria", "Secuencias, palabras y memoria de trabajo.", "Memoria — 20 min", "memory") +
-      quickCard("math", "＋", "Entrena cálculo", "Cuatro operaciones y estrategias mentales.", "Cálculo — 20 min", "arithmetic") +
-      quickCard("full", "↗", "Entrenamiento completo", "Memoria y después cálculo. 40 minutos.", "Comenzar 40 min", "full") + '</div>' +
+      quickCard("memory", "◉", "Entrena memoria", "Secuencias, palabras y memoria de trabajo.", "Memoria — 10 min", "memory") +
+      quickCard("math", "＋", "Entrena cálculo", "Cuatro operaciones y estrategias mentales.", "Cálculo — 10 min", "arithmetic") +
+      quickCard("full", "↗", "Entrenamiento completo", "Memoria y después cálculo. 20 minutos.", "Comenzar 20 min", "full") + '</div>' +
       '<div class="dashboard-grid lower-grid section-spacer"><section class="panel chart-panel"><div class="panel-heading"><div><h2>Precisión reciente</h2><span class="muted">Cálculo mental · por sesión</span></div><button class="button ghost small-button" data-nav="stats">Ver estadísticas</button></div>' + lineChart(FocoStatistics.dailySeries(data, "accuracy", "arithmetic", 10), "Precisión de cálculo reciente") + '</section>' +
       '<section class="panel level-panel"><div class="panel-heading"><h2>Nivel actual</h2><span class="tag">NIVEL ' + data.level + '</span></div><div class="level-head"><div><div class="level-name">' + esc(FocoProgression.levelLabel(data.level)) + '</div><div class="muted small">' + esc(FocoProgression.levelDetails(data.level)) + '</div></div><div class="level-number">' + data.level + '</div></div><ul class="level-list"><li>La dificultad se adapta a tus resultados.</li><li>El nivel puede cambiarse manualmente.</li></ul><div class="feedback neutral">' + esc(recommendation.text) + '</div></section></div>';
   }
@@ -177,15 +178,15 @@
     }
     return '<div class="page-heading"><div><div class="eyebrow">ENTRENAMIENTO DIARIO · NIVEL ' + data.level + '</div><h1>Elige tu entrenamiento.</h1><p>Los temporizadores son independientes. Pausa o abandona cuando lo necesites.</p></div></div>' + report +
       '<div class="session-chooser">' +
-      '<button class="panel session-choice" data-start="memory"><span class="quick-icon memory">◉</span><div><h3>Memoria</h3><p>Cuatro ejercicios adaptativos de memoria numérica, verbal y de trabajo.</p></div><span class="tag">20 MIN</span></button>' +
-      '<button class="panel session-choice" data-start="arithmetic"><span class="quick-icon math">＋</span><div><h3>Cálculo mental</h3><p>Practica operaciones y aplica métodos de cálculo mental.</p></div><span class="tag">20 MIN</span></button>' +
-      '<button class="panel session-choice" data-start="full"><span class="quick-icon full">↗</span><div><h3>Entrenamiento completo</h3><p>Primero memoria y después cálculo, con un temporizador para cada bloque.</p></div><span class="tag">40 MIN</span></button></div>' +
+      '<button class="panel session-choice" data-start="memory"><span class="quick-icon memory">◉</span><div><h3>Memoria</h3><p>Cuatro ejercicios adaptativos de memoria numérica, verbal y de trabajo.</p></div><span class="tag">10 MIN</span></button>' +
+      '<button class="panel session-choice" data-start="arithmetic"><span class="quick-icon math">＋</span><div><h3>Cálculo mental</h3><p>Practica operaciones y aplica métodos de cálculo mental.</p></div><span class="tag">10 MIN</span></button>' +
+      '<button class="panel session-choice" data-start="full"><span class="quick-icon full">↗</span><div><h3>Entrenamiento completo</h3><p>Primero memoria y después cálculo, con un temporizador para cada bloque.</p></div><span class="tag">20 MIN</span></button></div>' +
       '<section class="panel section-spacer"><div class="panel-heading"><div><h2>Practica un método</h2><span class="muted">Explora el ejemplo y luego resuelve ejercicios guiados.</span></div></div>' +
       '<div class="method-list">' + methods.map(function (method) {
         return '<button class="panel method-card ' + (chosenMethod === method.id ? "selected" : "") + '" data-method="' + method.id + '"><h3>' + esc(method.name) + '</h3><p>' + esc(method.description) + '</p></button>';
       }).join("") + '</div><div class="method-steps"><b>Ejemplo · ' + esc(selected.name) + '</b><span>' + esc(selected.example) + '</span></div>' +
       '<div class="heading-actions"><button class="button primary" data-action="open-method-lesson">Leer explicación y prepararme →</button></div></section>' +
-      '<section class="panel section-spacer"><div class="panel-heading"><div><h2>Desafío de 20 operaciones</h2><span class="muted">Resuelve, distrae tu atención y recupera las operaciones con sus resultados en orden.</span></div><span class="tag">' + (data.level >= 3 ? "DESBLOQUEADO" : "DESDE NIVEL 3") + '</span></div><p class="muted small">El desafío evalúa cálculo, recuerdo de operaciones, recuerdo de resultados, asociaciones y orden por separado. Los resultados no se revelan durante la resolución.</p><button class="button primary" data-start="challenge" ' + (data.level < 3 ? "disabled" : "") + '>Comenzar desafío · 20 min</button></section>';
+      '<section class="panel section-spacer"><div class="panel-heading"><div><h2>Desafío de 20 operaciones</h2><span class="muted">Resuelve, distrae tu atención y recupera las operaciones con sus resultados en orden.</span></div><span class="tag">' + (data.level >= 3 ? "DESBLOQUEADO" : "DESDE NIVEL 3") + '</span></div><p class="muted small">El desafío evalúa cálculo, recuerdo de operaciones, recuerdo de resultados, asociaciones y orden por separado. Los resultados no se revelan durante la resolución.</p><button class="button primary" data-start="challenge" ' + (data.level < 3 ? "disabled" : "") + '>Comenzar desafío · 10 min</button></section>';
   }
 
   function renderMethodLesson(method) {
@@ -194,7 +195,7 @@
     return '<div class="page-heading"><div><div class="eyebrow">PREPARACIÓN · ANTES DE LA PRÁCTICA</div><h1>' + esc(method.name) + '</h1><p>Lee la explicación y el ejemplo. La prueba empieza solo cuando confirmes que estás listo.</p></div></div>' +
       '<section class="panel method-lesson"><div class="lesson-section"><span class="lesson-step">01</span><div><h2>¿En qué consiste?</h2><ol class="lesson-list">' + lesson.map(function (step) { return '<li>' + esc(step) + '</li>'; }).join("") + '</ol></div></div>' +
       '<div class="lesson-section"><span class="lesson-step">02</span><div><h2>Ejemplo resuelto</h2><p class="muted">' + esc(method.example) + '</p><div class="method-steps">' + worked.map(function (step) { return '<span>' + esc(step) + '</span>'; }).join("") + '</div></div></div>' +
-      '<div class="lesson-confirm"><label><input id="method-understood" type="checkbox" ' + (methodUnderstood ? "checked" : "") + '> He leído la explicación y entiendo cómo aplicar este método.</label><div class="heading-actions"><button class="button" data-action="close-method-lesson">Volver a métodos</button><button class="button primary" data-action="start-method" ' + (methodUnderstood ? "" : "disabled") + '>Iniciar prueba · 20 min</button></div></div></section>';
+      '<div class="lesson-confirm"><label><input id="method-understood" type="checkbox" ' + (methodUnderstood ? "checked" : "") + '> He leído la explicación y entiendo cómo aplicar este método.</label><div class="heading-actions"><button class="button" data-action="close-method-lesson">Volver a métodos</button><button class="button primary" data-action="start-method" ' + (methodUnderstood ? "" : "disabled") + '>Iniciar prueba · 10 min</button></div></div></section>';
   }
 
   function reportStat(value, label) {
@@ -317,14 +318,14 @@
     save();
     window.clearInterval(tickTimer);
     window.clearTimeout(revealTimer);
-    lastReport = { title: session.type === "memory" ? "Entrenamiento de memoria" : session.challengeReport ? "Desafío y cálculo mental" : "Entrenamiento de cálculo", duration: "20:00", accuracy: saved.accuracy, exercises: saved.exercisesCompleted, recall: saved.bestRecall || "—" };
+    lastReport = { title: session.type === "memory" ? "Entrenamiento de memoria" : session.challengeReport ? "Desafío y cálculo mental" : "Entrenamiento de cálculo", duration: "10:00", accuracy: saved.accuracy, exercises: saved.exercisesCompleted, recall: saved.bestRecall || "—" };
     if (session.full && session.type === "memory") {
       toast("Memoria completada. Comienza el bloque de cálculo.");
       startSession("arithmetic", { full: true });
       return;
     }
     render();
-    toast("Sesión de 20 minutos completada. ¡Buen trabajo!");
+    toast("Sesión de 10 minutos completada. ¡Buen trabajo!");
   }
 
   function updateRecords() {
@@ -563,7 +564,7 @@
         reportStat(report.resultsRemembered + "/20", "Resultados recordados") +
         reportStat(report.associationsCorrect + "/20", "Asociaciones correctas") +
         reportStat(report.orderedAssociations + "/20", "Asociaciones en orden") +
-        reportStat(formatTime(report.elapsedSeconds), "Tiempo del desafío") + '</div><div class="session-actions"><span class="muted small">La sesión de cálculo continúa hasta completar los 20 minutos.</span><button class="button primary" data-action="next-math">Continuar práctica →</button></div></section>';
+        reportStat(formatTime(report.elapsedSeconds), "Tiempo del desafío") + '</div><div class="session-actions"><span class="muted small">La sesión de cálculo continúa hasta completar los 10 minutos.</span><button class="button primary" data-action="next-math">Continuar práctica →</button></div></section>';
     }
     return "";
   }
@@ -887,6 +888,12 @@
     });
     try {
       data = FocoStorage.load();
+      if (data.activeSession && data.activeSession.remainingSeconds > SESSION_LENGTH) {
+        data.activeSession.remainingSeconds = Math.ceil(data.activeSession.remainingSeconds * SESSION_LENGTH / PREVIOUS_SESSION_LENGTH);
+        data.activeSession.elapsedSeconds = SESSION_LENGTH - data.activeSession.remainingSeconds;
+        data.activeSession.lastTick = Date.now();
+        save();
+      }
       selectedDay = Math.max(1, Math.min(90, Number(data.prefs.selectedDay) || currentDay()));
       chosenMethod = data.prefs.method || "mixed";
       if (data.activeSession) {
