@@ -131,8 +131,8 @@
   function renderDashboard() {
     const completedDays = dayCompletionCount();
     const total = FocoStatistics.trainingSessions(data);
-    const memorySessions = FocoStatistics.trainingSessions(data, "memory");
     const averageMath = FocoStatistics.averageAccuracy(data, "arithmetic");
+    const averageMemory = FocoStatistics.averageAccuracy(data, "memory");
     const bestAccuracy = total.length ? Math.max.apply(null, total.map(function (session) { return session.accuracy || 0; })) : null;
     const minutes = Math.round(FocoStatistics.totalMinutes(data));
     const percent = Math.round(completedDays / 90 * 100);
@@ -145,6 +145,7 @@
       metric("Racha actual", FocoStatistics.streak(data) + '<small class="muted"> días</small>', "↗", "Según días con entrenamiento") +
       metric("Tiempo entrenado", minutes < 60 ? minutes + " min" : Math.floor(minutes / 60) + " h " + (minutes % 60) + " min", "◷", "Tiempo de sesiones completadas") +
       metric("Precisión en cálculo", avgLabel, "⌁", "Promedio de sesiones completadas") +
+      metric("Precisión en memoria", averageMemory === null ? "—" : Math.round(averageMemory) + "%", "◉", "Promedio de sesiones de memoria") +
       metric("Mejor precisión", bestAccuracy === null ? "—" : Math.round(bestAccuracy) + "%", "↗", "Mejor marca entre sesiones") +
       metric("Mejor recuerdo", FocoStatistics.memoryBest(data) || "—", "◉", "Máximo de elementos recordados") + '</div>' +
       '<div class="dashboard-grid dashboard-main-grid">' +
@@ -486,13 +487,19 @@
     const subtitle = session.full ? "Bloque " + (session.type === "memory" ? "1 de 2" : "2 de 2") + " · Día " + session.programDay : "Día " + session.programDay + " · Nivel " + session.level;
     const progress = Math.round((SESSION_LENGTH - session.remainingSeconds) / SESSION_LENGTH * 100);
     const top = '<div class="session-top"><div><div class="eyebrow">' + esc(subtitle) + '</div><h1>' + esc(title) + '</h1><div class="session-status"><span class="status-dot ' + (paused ? "paused" : "") + '"></span>' + (paused ? "Sesión pausada" : "Sesión en curso") + '</div></div><div class="timer ' + (paused ? "paused" : "") + '" id="session-timer">' + formatTime(session.remainingSeconds) + '</div></div><div class="session-progress progress-bar"><span style="width:' + progress + '%"></span></div>';
+    const memoryScores = session.exerciseResults.filter(function (result) { return Number.isFinite(result.accuracy); }).map(function (result) { return result.accuracy; });
+    const memorySessionAccuracy = FocoStatistics.average(memoryScores);
+    const memoryOverallAccuracy = FocoStatistics.averageAccuracy(data, "memory");
+    const memoryMetrics = session.type === "memory"
+      ? '<div class="session-memory-metrics"><div><b>' + (memorySessionAccuracy === null ? "—" : Math.round(memorySessionAccuracy) + "%") + '</b><span>Esta sesión · ' + memoryScores.length + ' ejercicios</span></div><div><b>' + (memoryOverallAccuracy === null ? "—" : Math.round(memoryOverallAccuracy) + "%") + '</b><span>Promedio general de memoria</span></div></div>'
+      : "";
     const controls = '<div class="session-actions"><button class="button danger ghost" data-action="abandon">Abandonar sesión</button><div class="heading-actions"><button class="button" data-action="pause">' + (paused ? "Reanudar" : "Pausar") + '</button></div></div>';
     let content;
     if (paused) content = '<section class="panel exercise-panel"><div class="empty-state"><h2>Entrenamiento en pausa</h2><p>El temporizador está detenido. Reanuda cuando estés listo.</p><button class="button primary" data-action="pause">Reanudar sesión</button></div></section>';
     else if (session.type === "memory") content = renderMemoryExercise(session);
     else if (session.challenge && session.challenge.phase !== "practice") content = renderChallenge(session);
     else content = renderArithmeticExercise(session);
-    return '<div class="training-active fade-in">' + top + content + controls + '</div>';
+    return '<div class="training-active fade-in">' + top + memoryMetrics + content + controls + '</div>';
   }
 
   function renderMemoryExercise(session) {
@@ -507,7 +514,7 @@
         return renderMemoryExercise(session);
       }
     }
-    let body = '<div class="eyebrow">EJERCICIO ' + (session.completedExercises + 1) + ' · ' + esc(task.title) + '</div><h2>' + esc(task.title) + '</h2><p class="instructions">' + esc(task.instruction) + '</p>';
+    let body = '<div class="eyebrow">EJERCICIO ' + (session.completedExercises + 1) + ' · ' + esc(task.title) + '</div><h2>' + esc(task.title) + '</h2><p class="instructions instruction-highlight">' + esc(task.instruction) + '</p>';
     if (task.done) {
       const result = task.result;
       const details = [];
@@ -516,12 +523,15 @@
       if (mistakes.length) details.push(mistakes.join(" "));
       if (omissionDetails.length) details.push("Te faltó: " + omissionDetails.join(", ") + ".");
       const wordMode = task.type === "words" || task.sequenceKind === "words";
-      body += '<div class="feedback ' + (result.errors || result.omissions || result.accuracy < 70 ? "error" : "") + '">' + result.recalled + ' de ' + result.total + ' elementos recordados · ' + result.correctPositions + ' en posición correcta · ' + result.accuracy + '% de precisión. Omisiones: ' + result.omissions + ' · Errores: ' + result.errors + '.' + (details.length ? '<br><span class="small">' + esc(details.join(" ")) + '</span>' : "") + '<br><span class="small">Secuencia esperada: ' + esc(result.expected.join(wordMode ? " · " : " ")) + '</span></div><div class="session-actions"><span class="muted small">El resultado se guardó en esta sesión.</span><button class="button primary" data-action="next-memory">Siguiente ejercicio →</button></div>';
+      const comparison = result.errors || result.omissions
+        ? '<div class="answer-comparison"><span><b>Tu respuesta:</b> ' + esc((result.submitted || []).map(function (value) { return value === null ? "" : String(value); }).filter(Boolean).join(wordMode ? " · " : " ")) + '</span><span><b>Respuesta correcta:</b> ' + esc(result.expected.join(wordMode ? " · " : " ")) + '</span></div>'
+        : "";
+      body += '<div class="feedback ' + (result.errors || result.omissions || result.accuracy < 70 ? "error" : "") + '">' + result.recalled + ' de ' + result.total + ' elementos recordados · ' + result.correctPositions + ' en posición correcta · ' + result.accuracy + '% de precisión. Omisiones: ' + result.omissions + ' · Errores: ' + result.errors + '.' + (comparison ? comparison : '<br><span class="small">Secuencia esperada: ' + esc(result.expected.join(wordMode ? " · " : " ")) + '</span>') + (details.length ? '<br><span class="small">' + esc(details.join(" ")) + '</span>' : "") + '</div><div class="session-actions"><span class="muted small">El resultado se guardó en esta sesión.</span><button class="button primary" data-action="next-memory">Siguiente ejercicio →</button></div>';
     } else if (task.type === "interference" && task.phase === "distract") {
       const current = task.distractions[task.distractionIndex];
       body += '<div class="exercise-content"><div class="operation-display">' + current.a + ' + ' + current.b + '</div><p class="muted small">Distracción ' + (task.distractionIndex + 1) + ' de 3</p><form class="exercise-form" data-form="memory-distract"><input name="answer" inputmode="numeric" autocomplete="off" placeholder="Tu respuesta" required aria-label="Resultado de la suma"><button class="button primary">Responder</button></form></div>';
     } else if (task.phase === "study") {
-      body += '<div class="exercise-content"><div class="sequence-display ' + (task.type === "words" || task.sequenceKind === "words" ? "stimulus-word" : "") + '">' + esc(task.stimulus) + '</div><div class="feedback neutral" id="study-hint">Observa con atención; el estímulo se ocultará automáticamente.</div></div>';
+      body += '<div class="exercise-content"><div class="sequence-display ' + (task.type === "words" || task.sequenceKind === "words" ? "stimulus-word" : "") + (task.type === "working" && task.mode === "pares" ? " sequence-pairs" : "") + '">' + esc(task.stimulus) + '</div><div class="feedback neutral" id="study-hint">Observa con atención; el estímulo se ocultará automáticamente.</div></div>';
       window.clearTimeout(revealTimer);
       revealTimer = window.setTimeout(function () {
         if (data.activeSession && data.activeSession.task === task && task.phase === "study") {
@@ -564,14 +574,14 @@
     const challenge = session.challenge;
     if (challenge.phase === "solve") {
       const problem = challenge.operations[challenge.index];
-      return '<section class="panel exercise-panel"><div class="eyebrow">FASE 1 · RESOLUCIÓN</div><div class="challenge-intro"><div><h2>Resuelve y retén</h2><p class="instructions">Resuelve mentalmente. La respuesta correcta no se mostrará hasta terminar el desafío.</p></div><div class="challenge-count">' + (challenge.index + 1) + '<small class="muted"> / 20</small></div></div><div class="operation-display">' + esc(problem.text) + '</div><form class="exercise-form" data-form="challenge"><input name="answer" inputmode="numeric" autocomplete="off" placeholder="Tu resultado" required aria-label="Resultado de la operación"><button class="button primary">Guardar y continuar</button></form></section>';
+      return '<section class="panel exercise-panel"><div class="eyebrow">FASE 1 · RESOLUCIÓN</div><div class="challenge-intro"><div><h2>Resuelve y retén</h2><p class="instructions">Calcula cada operación. Las respuestas se mostrarán al final.</p></div><div class="challenge-count">' + (challenge.index + 1) + '<small class="muted"> / 20</small></div></div><div class="operation-display">' + esc(problem.text) + '</div><form class="exercise-form" data-form="challenge"><input name="answer" inputmode="numeric" autocomplete="off" placeholder="Tu resultado" required aria-label="Resultado de la operación"><button class="button primary">Guardar y continuar</button></form></section>';
     }
     if (challenge.phase === "distract") {
       const current = challenge.distractors[challenge.distractionIndex];
-      return '<section class="panel exercise-panel"><div class="eyebrow">FASE 2 · INTERFERENCIA</div><h2>Despeja la memoria de trabajo</h2><p class="instructions">Resuelve estas tres sumas antes de recuperar las 20 operaciones. La secuencia original ya está oculta.</p><div class="operation-display">' + esc(current.text) + '</div><p class="muted small">Distracción ' + (challenge.distractionIndex + 1) + ' de 3</p><form class="exercise-form" data-form="challenge"><input name="answer" inputmode="numeric" autocomplete="off" placeholder="Tu respuesta" required aria-label="Resultado de la suma"><button class="button primary">Continuar</button></form></section>';
+      return '<section class="panel exercise-panel"><div class="eyebrow">FASE 2 · INTERFERENCIA</div><h2>Despeja la memoria de trabajo</h2><p class="instructions">Resuelve 3 sumas. Luego recuerda las 20 operaciones.</p><div class="operation-display">' + esc(current.text) + '</div><p class="muted small">Suma ' + (challenge.distractionIndex + 1) + ' de 3</p><form class="exercise-form" data-form="challenge"><input name="answer" inputmode="numeric" autocomplete="off" placeholder="Tu respuesta" required aria-label="Resultado de la suma"><button class="button primary">Continuar</button></form></section>';
     }
     if (challenge.phase === "recall") {
-      return '<section class="panel exercise-panel"><div class="eyebrow">FASE 3 · RECUPERACIÓN</div><div class="challenge-intro"><div><h2>Recuerda la asociación</h2><p class="instructions">Escribe la operación y el resultado que asocias con esta posición. No se mostrarán las operaciones originales.</p></div><div class="challenge-count">' + (challenge.index + 1) + '<small class="muted"> / 20</small></div></div><div class="challenge-row"><span class="row-index">' + String(challenge.index + 1).padStart(2, "0") + '</span><span class="row-operation">Operación recordada</span><span class="muted small">Resultado</span></div><form class="exercise-form" data-form="challenge-recall"><input name="operation" autocomplete="off" placeholder="Ej. 43 × 11" required aria-label="Operación recordada"><input name="result" inputmode="numeric" autocomplete="off" placeholder="Resultado" required aria-label="Resultado recordado"><button class="button primary">Guardar recuerdo</button></form></section>';
+      return '<section class="panel exercise-panel"><div class="eyebrow">FASE 3 · RECUPERACIÓN</div><div class="challenge-intro"><div><h2>Recuerda la asociación</h2><p class="instructions">Escribe la operación y el resultado que recuerdas.</p></div><div class="challenge-count">' + (challenge.index + 1) + '<small class="muted"> / 20</small></div></div><div class="challenge-row"><span class="row-index">' + String(challenge.index + 1).padStart(2, "0") + '</span><span class="row-operation">Operación recordada</span><span class="muted small">Resultado</span></div><form class="exercise-form" data-form="challenge-recall"><input name="operation" autocomplete="off" placeholder="Ej. 43 × 11" required aria-label="Operación recordada"><input name="result" inputmode="numeric" autocomplete="off" placeholder="Resultado" required aria-label="Resultado recordado"><button class="button primary">Guardar recuerdo</button></form></section>';
     }
     if (challenge.phase === "report") {
       const report = challenge.report;
@@ -603,11 +613,12 @@
     }
     const selectedDate = FocoProgression.dayDate(data, selectedDay);
     const selectedSessions = sessionsForProgramDay(selectedDay);
+    const overallMemoryAccuracy = FocoStatistics.averageAccuracy(data, "memory");
     const futureDay = selectedDate > today();
     const activeOnSelectedDay = data.activeSession && data.activeSession.programDay === selectedDay;
-    return '<div class="page-heading"><div><div class="eyebrow">PROGRAMA PERSONAL</div><h1>Calendario de 90 días</h1><p>Los días no completados permanecen disponibles para recuperar.</p></div></div><div class="calendar-toolbar"><button class="button small-button" data-month="-1" ' + (calendarMonth === 0 ? "disabled" : "") + '>← Anterior</button><b>Mes ' + (calendarMonth + 1) + ' del programa · ' + esc(dateLabel(firstDate, { day: "numeric", month: "short" })) + ' – ' + esc(dateLabel(FocoProgression.dayDate(data, endDay), { day: "numeric", month: "short" })) + '</b><button class="button small-button" data-month="1" ' + (calendarMonth === 2 ? "disabled" : "") + '>Siguiente →</button><span class="muted small">Fecha del programa: ' + esc(dateLabel(selectedDate)) + '</span></div><section class="panel"><div class="calendar-grid">' + WEEKDAYS.map(function (day) { return '<div class="calendar-weekday">' + day + '</div>'; }).join("") + cells.join("") + '</div><div class="calendar-legend small muted section-spacer">● Memoria <span style="color:var(--orange)">●</span> Cálculo <span style="color:var(--accent)">●</span> Día completo</div></section><section class="panel calendar-detail"><div class="panel-heading"><div><h2>Día ' + selectedDay + ' · ' + esc(dateLabel(selectedDate)) + '</h2><span class="muted">Cada sesión se registra por separado, sin reemplazar el historial.</span></div><div class="heading-actions"><button class="button small-button" data-start="memory" ' + (futureDay ? "disabled" : "") + '>Recuperar memoria</button><button class="button small-button" data-start="arithmetic" ' + (futureDay ? "disabled" : "") + '>Recuperar cálculo</button><button class="button danger small-button" data-action="delete-day" ' + (!selectedSessions.length || futureDay || activeOnSelectedDay ? "disabled" : "") + '>Eliminar progreso del día</button></div></div>' +
+    return '<div class="page-heading"><div><div class="eyebrow">PROGRAMA PERSONAL</div><h1>Calendario de 90 días</h1><p>Los días no completados permanecen disponibles para recuperar.</p></div></div><div class="calendar-toolbar"><button class="button small-button" data-month="-1" ' + (calendarMonth === 0 ? "disabled" : "") + '>← Anterior</button><b>Mes ' + (calendarMonth + 1) + ' del programa · ' + esc(dateLabel(firstDate, { day: "numeric", month: "short" })) + ' – ' + esc(dateLabel(FocoProgression.dayDate(data, endDay), { day: "numeric", month: "short" })) + '</b><button class="button small-button" data-month="1" ' + (calendarMonth === 2 ? "disabled" : "") + '>Siguiente →</button><span class="muted small">Fecha del programa: ' + esc(dateLabel(selectedDate)) + '</span></div><section class="panel"><div class="calendar-grid">' + WEEKDAYS.map(function (day) { return '<div class="calendar-weekday">' + day + '</div>'; }).join("") + cells.join("") + '</div><div class="calendar-legend small muted section-spacer">● Memoria <span style="color:var(--orange)">●</span> Cálculo <span style="color:var(--accent)">●</span> Día completo</div></section><section class="panel calendar-detail"><div class="panel-heading"><div><h2>Día ' + selectedDay + ' · ' + esc(dateLabel(selectedDate)) + '</h2><span class="muted">Precisión general de memoria: ' + (overallMemoryAccuracy === null ? "—" : Math.round(overallMemoryAccuracy) + "%") + ' · Cada sesión muestra su resultado individual.</span></div><div class="heading-actions"><button class="button small-button" data-start="memory" ' + (futureDay ? "disabled" : "") + '>Recuperar memoria</button><button class="button small-button" data-start="arithmetic" ' + (futureDay ? "disabled" : "") + '>Recuperar cálculo</button><button class="button danger small-button" data-action="delete-day" ' + (!selectedSessions.length || futureDay || activeOnSelectedDay ? "disabled" : "") + '>Eliminar progreso del día</button></div></div>' +
       (selectedSessions.length ? selectedSessions.map(function (session) {
-        return '<div class="calendar-session"><span><b>' + (session.type === "memory" ? "Memoria" : "Cálculo") + '</b> · ' + (session.completed ? "Completada" : "Interrumpida") + ' · ' + dateLabel(session.completedAt.slice(0, 10)) + '</span><span>' + (session.completed ? session.accuracy + "% precisión" : session.exercisesCompleted + " ejercicios guardados") + '</span></div>';
+        return '<div class="calendar-session"><span><b>' + (session.type === "memory" ? "Memoria" : "Cálculo") + '</b> · ' + (session.completed ? "Completada" : "Interrumpida") + ' · ' + dateLabel(session.completedAt.slice(0, 10)) + '</span><span>' + (session.completed ? (session.type === "memory" ? "Precisión de memoria: " : "Precisión: ") + Math.round(session.accuracy) + "%" : session.exercisesCompleted + " ejercicios guardados") + '</span></div>';
       }).join("") : '<div class="empty-state">Aún no hay sesiones en este día. Elige un bloque para entrenar o recuperar.</div>') + '</section>';
   }
 
@@ -621,7 +632,11 @@
     const weekly = FocoStatistics.weeklyComparison(data, "arithmetic");
     const change = weekly.change === null ? "—" : (weekly.change > 0 ? "+" : "") + Math.round(weekly.change) + " pp";
     const memorySeries = FocoStatistics.dailySeries(data, "bestRecall", "memory", 14);
+    const memoryAccuracySeries = memory.slice(-14).map(function (session) {
+      return { date: session.completedAt.slice(0, 10), value: session.accuracy };
+    });
     const mathSeries = FocoStatistics.dailySeries(data, "accuracy", "arithmetic", 14);
+    const memoryAccuracy = FocoStatistics.averageAccuracy(data, "memory");
     const avgRecall = memory.length ? Math.round(FocoStatistics.average(memory.map(function (session) { return session.bestRecall || 0; }))) : null;
     const responseTimes = all.map(function (session) { return session.averageResponseSeconds; }).filter(Number.isFinite);
     const speedSeries = all.filter(function (session) { return Number.isFinite(session.averageResponseSeconds); }).slice(-14).map(function (session) {
@@ -632,10 +647,11 @@
     });
     return '<div class="page-heading"><div><div class="eyebrow">DATOS DE ENTRENAMIENTO</div><h1>Tu evolución.</h1><p>Las métricas se calculan solo con sesiones completadas; las sesiones interrumpidas conservan sus ejercicios, pero no se mezclan en los promedios.</p></div></div><div class="stats-grid">' +
       statCard("Precisión de cálculo", mathSeries, "Por sesión · escala porcentual", "Precisión", 100) +
+      statCard("Precisión en memoria", memoryAccuracySeries, "Por sesión · promedio general " + (memoryAccuracy === null ? "—" : Math.round(memoryAccuracy) + "%"), "Precisión", 100) +
       statCard("Recuerdo de memoria", memorySeries, "Mejor número de elementos por sesión", "Elementos", null) +
       statCard("Tiempo por respuesta", speedSeries, "Promedio de respuesta · menos segundos es más rápido", "s", null) +
       statCard("Nivel alcanzado", levelSeries, "Nivel registrado al completar cada sesión", "Nivel", 5) +
-      '<section class="panel stats-card"><div class="panel-heading"><div><h2>Resumen de rendimiento</h2><span class="muted">Comparación de promedios</span></div></div><div class="stats-kpi-row"><div class="stats-kpi"><b>' + (general === null ? "—" : Math.round(general) + "%") + '</b><span>Promedio general</span></div><div class="stats-kpi"><b>' + (recentAvg === null ? "—" : Math.round(recentAvg) + "%") + '</b><span>Últimos 7 días</span></div></div><div class="stats-kpi-row"><div class="stats-kpi"><b>' + change + '</b><span>Cambio semanal en cálculo</span></div><div class="stats-kpi"><b>' + (avgRecall === null ? "—" : avgRecall) + '</b><span>Recuerdo medio por ejercicio</span></div></div><div class="feedback neutral">La comparación semanal usa los últimos 7 días frente a los 7 días anteriores. Los valores con pocos datos deben interpretarse con cautela.</div></section>' +
+      '<section class="panel stats-card"><div class="panel-heading"><div><h2>Resumen de rendimiento</h2><span class="muted">Comparación de promedios</span></div></div><div class="stats-kpi-row"><div class="stats-kpi"><b>' + (general === null ? "—" : Math.round(general) + "%") + '</b><span>Promedio general</span></div><div class="stats-kpi"><b>' + (recentAvg === null ? "—" : Math.round(recentAvg) + "%") + '</b><span>Últimos 7 días</span></div><div class="stats-kpi"><b>' + (memoryAccuracy === null ? "—" : Math.round(memoryAccuracy) + "%") + '</b><span>Promedio general de memoria</span></div></div><div class="stats-kpi-row"><div class="stats-kpi"><b>' + change + '</b><span>Cambio semanal en cálculo</span></div><div class="stats-kpi"><b>' + (avgRecall === null ? "—" : avgRecall) + '</b><span>Recuerdo medio por ejercicio</span></div></div><div class="feedback neutral">La comparación semanal usa los últimos 7 días frente a los 7 días anteriores. Los valores con pocos datos deben interpretarse con cautela.</div></section>' +
       '<section class="panel stats-card"><div class="panel-heading"><div><h2>Nivel y tiempo</h2><span class="muted">Evolución basada en resultados</span></div></div><div class="stats-kpi-row"><div class="stats-kpi"><b>' + data.level + ' / 5</b><span>' + esc(FocoProgression.levelLabel(data.level)) + '</span></div><div class="stats-kpi"><b>' + Math.round(FocoStatistics.totalMinutes(data)) + ' min</b><span>Entrenamiento completado</span></div></div><div class="level-progress-label"><span>Nivel manual/adaptativo actual</span><span>' + data.level + ' de 5</span></div><div class="progress-bar"><span style="width:' + data.level * 20 + '%"></span></div><p class="muted small section-spacer">Tiempo promedio por ejercicio: ' + (responseTimes.length ? (Math.round(FocoStatistics.average(responseTimes) * 10) / 10) + " s en " + responseTimes.length + " sesiones." : "aún no hay mediciones.") + '</p></section>' +
       '<section class="panel stats-card"><div class="panel-heading"><div><h2>Rendimiento semanal</h2><span class="muted">Precisión aritmética promedio</span></div></div>' + weeklyBars(data) + '</section></div>';
   }

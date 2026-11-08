@@ -34,7 +34,7 @@
       return {
         type: "numeric", title: "Memoria numérica", phase: "study", sequence,
         direction: reverse ? "inversa" : "directa",
-        instruction: "Observa la secuencia. Cuando desaparezca, escríbela " + (reverse ? "en orden inverso." : "en el mismo orden."),
+        instruction: "Memoriza y repite en orden " + (reverse ? "inverso." : "directo."),
         stimulus: sequence.join("   "),
         showMs: Math.max(2200, Math.min(7500, 1500 + sequence.length * 480)),
         bestRecall: sequence.length
@@ -44,7 +44,7 @@
       const words = shuffled(WORDS).slice(0, Math.max(3, Math.min(12, 2 + level + Math.floor(index / 5))));
       return {
         type: "words", title: "Memoria de palabras", phase: "study", sequence: words,
-        instruction: "Memoriza estas palabras. Después, escribe las que recuerdes; el orden no importa.",
+        instruction: "Memoriza las palabras. Luego escribe las que recuerdes; el orden no importa.",
         stimulus: words.join("  ·  "),
         showMs: Math.max(3500, Math.min(9000, 2600 + words.length * 470)),
         bestRecall: words.length
@@ -63,20 +63,26 @@
       return {
         type: "interference", title: "Memoria con interferencia", phase: "study", sequence,
         sequenceKind: kind, stimulus: sequence.join(kind === "words" ? "  ·  " : "   "),
-        instruction: "Memoriza la secuencia. Luego resuelve tres sumas sencillas antes de recordarla.",
+        instruction: "Memoriza la secuencia. Resuelve 3 sumas y luego recuérdala.",
         showMs: Math.max(3000, Math.min(8500, 2400 + sequence.length * 480)),
         distractions, distractionIndex: 0, bestRecall: sequence.length
       };
     }
-    const sequence = Array.from({ length: Math.min(10, 3 + level + Math.floor(index / 6)) }, function () { return randomInt(0, 9); });
     const mode = ["inverso", "pares", "ascendente"][index % 3];
+    const workingLength = mode === "pares" ? 13 : Math.min(10, 3 + level + Math.floor(index / 6));
+    let sequence = Array.from({ length: workingLength }, function () { return randomInt(0, 9); });
+    while (mode === "pares" && sequence.filter(function (number) { return number % 2 === 0; }).length > 10) {
+      sequence = Array.from({ length: workingLength }, function () { return randomInt(0, 9); });
+    }
     let expected = sequence.slice();
     if (mode === "inverso") expected.reverse();
     if (mode === "pares") expected = expected.filter(function (n) { return n % 2 === 0; });
     if (mode === "ascendente") expected.sort(function (a, b) { return a - b; });
     return {
       type: "working", title: "Memoria de trabajo", phase: "study", sequence, expected,
-      mode, instruction: "Memoriza los números y, cuando se oculten, escríbelos " + mode + ".",
+      mode, instruction: mode === "pares"
+        ? "Memoriza 13 números. Luego escribe solo los pares, en el orden en que aparecieron."
+        : "Memoriza y luego escribe los números en orden " + mode + ".",
       stimulus: sequence.join("   "),
       showMs: Math.max(2800, Math.min(8000, 2100 + sequence.length * 430)),
       bestRecall: expected.length
@@ -96,9 +102,10 @@
       return String(response).split(/[\s,;.!?]+/).map(normalizeWords).filter(Boolean);
     }
     if (Array.isArray(response)) {
-      return response.map(function (item) {
+      return response.filter(function (item) {
+        return String(item).trim() !== "";
+      }).map(function (item) {
         const value = String(item).trim();
-        if (!value) return null;
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : NaN;
       });
@@ -174,6 +181,7 @@
       omissions: Math.max(0, normalizedExpected.length - recalled),
       errors,
       expected,
+      submitted: actual,
       correctPositions: positions,
       mistakes,
       omissionDetails: missingIndices.map(function (index) {

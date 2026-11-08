@@ -152,6 +152,10 @@ h3 { font-size: 14px; margin-bottom: 7px; }
 .session-choice p { color: var(--muted); font-size: 11px; line-height: 1.5; margin: 0; }
 .training-active { width: min(760px, 100%); margin: 0 auto; }
 .session-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+.session-memory-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: -4px 0 14px; }
+.session-memory-metrics > div { display: grid; gap: 3px; padding: 10px 13px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; }
+.session-memory-metrics b { font: 700 20px "Segoe UI", Arial, sans-serif; color: var(--accent); }
+.session-memory-metrics span { color: var(--muted); font-size: 10px; }
 .timer { color: var(--accent); font: 700 26px "Segoe UI", Arial, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .timer.paused { color: var(--orange); }
 .session-status { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; margin-top: 5px; }
@@ -159,9 +163,11 @@ h3 { font-size: 14px; margin-bottom: 7px; }
 .status-dot.paused { background: var(--orange); }
 .session-progress { margin-bottom: 14px; }
 .exercise-panel { min-height: 360px; }
-.exercise-panel .instructions { line-height: 1.65; color: var(--muted); font-size: 13px; }
+.exercise-panel .instructions { line-height: 1.4; color: var(--text); font-size: 14px; font-weight: 650; }
+.exercise-panel .instruction-highlight { border-left: 3px solid var(--accent); border-radius: 0 7px 7px 0; background: var(--accent-wash); padding: 9px 12px; margin: 10px 0; }
 .exercise-content { margin: 22px 0; }
 .sequence-display { text-align: center; font: 700 clamp(25px, 6vw, 42px) "Segoe UI", Arial, sans-serif; letter-spacing: 8px; padding: 35px 10px; color: var(--text); }
+.sequence-display.sequence-pairs { font-size: clamp(20px, 4vw, 32px); letter-spacing: 2px; line-height: 1.6; }
 .sequence-hidden { color: var(--subtle); font-size: 14px; letter-spacing: 1px; font-family: "Segoe UI", Arial, sans-serif; font-weight: 500; }
 .stimulus-word { letter-spacing: 1px; }
 .exercise-form { display: flex; gap: 9px; align-items: center; }
@@ -174,6 +180,9 @@ h3 { font-size: 14px; margin-bottom: 7px; }
 .feedback { padding: 12px 14px; border-radius: 7px; background: var(--accent-wash); color: var(--accent); font-size: 12px; margin-top: 14px; }
 .feedback.error { color: var(--red); background: rgba(251,129,137,.09); }
 .feedback.neutral { color: var(--muted); background: var(--panel-2); }
+.answer-comparison { display: grid; gap: 5px; margin-top: 9px; color: var(--text); }
+.answer-comparison span { overflow-wrap: anywhere; }
+.answer-comparison b { color: inherit; }
 .session-actions { display: flex; justify-content: space-between; gap: 9px; margin-top: 15px; }
 .operation-display { text-align: center; font: 700 clamp(28px, 6vw, 44px) "Segoe UI", Arial, sans-serif; letter-spacing: .5px; padding: 32px 10px 26px; }
 .method-steps { border-left: 2px solid var(--accent); padding: 8px 0 8px 15px; margin: 14px 0; color: #cbd3d9; line-height: 1.8; font-size: 13px; }
@@ -307,4 +316,6 @@ body.light-theme .calendar-day { background: var(--panel); }
   .footer-right { display: none; }
   .exercise-form { align-items: stretch; flex-direction: column; }
   .number-answer-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .session-memory-metrics { gap: 7px; }
+  .session-memory-metrics > div { padding: 9px; }
 }
